@@ -87,7 +87,7 @@ class SmartIrrigationSystem {
 
     async loadPumpStatus() {
         try {
-            const response = await fetch('/api/pump/status');
+            const response = await fetch('/api/pump');
             const result = await response.json();
             
             if (result.success) {
