@@ -168,8 +168,9 @@ class SmartIrrigationSystem {
     startPeriodicUpdates() {
         // Update weather data every 5 minutes
         setInterval(() => {
+            console.log('Updating weather data...');
             this.loadWeatherData();
-        }, 5 * 60 * 1000);
+        }, 30 * 1000); // Update every 30 seconds for testing, change to 5 * 60 * 1000 for production
     }
 }
 
