@@ -1,6 +1,6 @@
 let pumpStatus = false;
 
-module.exports = async (req, res) => {
+module.exports = (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -21,17 +21,31 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'POST') {
-    // Control pump
-    const { status } = req.body;
+    let body = '';
     
-    // In a real implementation, this would control actual hardware
-    pumpStatus = status;
-    console.log(`Water pump ${status ? 'ON' : 'OFF'}`);
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
     
-    res.status(200).json({
-      success: true,
-      message: `Water pump turned ${status ? 'ON' : 'OFF'}`,
-      pumpStatus: status
+    req.on('end', () => {
+      try {
+        const { status } = JSON.parse(body);
+        
+        // In a real implementation, this would control actual hardware
+        pumpStatus = status;
+        console.log(`Water pump ${status ? 'ON' : 'OFF'}`);
+        
+        res.status(200).json({
+          success: true,
+          message: `Water pump turned ${status ? 'ON' : 'OFF'}`,
+          pumpStatus: status
+        });
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid JSON'
+        });
+      }
     });
     return;
   }
