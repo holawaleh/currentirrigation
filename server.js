@@ -1,82 +1,95 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const cors = require('cors');
-const fetch = require('node-fetch').default;
-const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.static('public'));
+app.use(bodyParser.json());
 
-// Serve the main HTML file
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// In-memory storage (replace with database in production)
+let sensorData = {
+  climate: null,
+  soil: null,
+  pumpStatus: 'off'
+};
 
-// API endpoint to fetch live weather data
-app.get('/api/weather', async (req, res) => {
-  try {
-    const latitude = 8.4966; // Ilorin, Nigeria
-    const longitude = 4.5421;
-    
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,soil_moisture_0_1cm&timezone=Africa/Lagos&forecast_days=1`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch weather data');
-    }
-    
-    // Get the current hour's data (first element in the arrays)
-    const currentData = {
-      temperature: data.hourly.temperature_2m[0],
-      humidity: data.hourly.relative_humidity_2m[0],
-      pressure: data.hourly.surface_pressure[0],
-      soilMoisture: data.hourly.soil_moisture_0_1cm[0],
-      timestamp: data.hourly.time[0]
-    };
-    
-    res.json({
-      success: true,
-      data: currentData,
-      location: 'Ilorin, Nigeria'
-    });
-  } catch (error) {
-    console.error('Error fetching weather data:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch weather data'
-    });
+// 1. Climate Data API (Temperature, Humidity, Pressure)
+app.post('/api/climate', (req, res) => {
+  const { temperature, humidity, pressure, deviceId } = req.body;
+  
+  // Validate input
+  if (typeof temperature !== 'number' || 
+      typeof humidity !== 'number' || 
+      typeof pressure !== 'number') {
+    return res.status(400).json({ error: 'Invalid data format' });
   }
+
+  // Store data
+  sensorData.climate = {
+    temperature,
+    humidity,
+    pressure,
+    deviceId,
+    timestamp: new Date()
+  };
+
+  console.log('Climate data received:', sensorData.climate);
+  res.status(200).json({ status: 'success' });
 });
 
-// API endpoint to control water pump
+// 2. Soil Moisture API
+app.post('/api/soil', (req, res) => {
+  const { moisture, deviceId } = req.body;
+  
+  if (typeof moisture !== 'number' || moisture < 0 || moisture > 1) {
+    return res.status(400).json({ error: 'Invalid moisture value' });
+  }
+
+  sensorData.soil = {
+    moisture,
+    deviceId,
+    timestamp: new Date()
+  };
+
+  console.log('Soil data received:', sensorData.soil);
+  res.status(200).json({ status: 'success' });
+});
+
+// 3. Pump Control API
 app.post('/api/pump', (req, res) => {
-  const { status } = req.body;
+  const { action } = req.body;
   
-  // In a real implementation, this would control actual hardware
-  console.log(`Water pump ${status ? 'ON' : 'OFF'}`);
-  
-  res.json({
-    success: true,
-    message: `Water pump turned ${status ? 'ON' : 'OFF'}`,
-    pumpStatus: status
+  if (!['on', 'off'].includes(action)) {
+    return res.status(400).json({ error: 'Invalid action' });
+  }
+
+  sensorData.pumpStatus = action;
+  console.log(`Pump turned ${action}`);
+
+  // Here you would typically:
+  // 1. Send command to actual IoT device
+  // 2. Log the action
+  // 3. Verify pump status
+
+  res.status(200).json({ 
+    status: 'success',
+    pumpStatus: action,
+    timestamp: new Date()
   });
 });
 
-// API endpoint to get pump status
-app.get('/api/pump/status', (req, res) => {
-  // In a real implementation, this would read from hardware
-  res.json({
-    success: true,
-    pumpStatus: false // Default to OFF
+// Get all current data (for your frontend)
+app.get('/api/status', (req, res) => {
+  res.status(200).json({
+    climate: sensorData.climate,
+    soil: sensorData.soil,
+    pumpStatus: sensorData.pumpStatus
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`Smart Irrigation System server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
