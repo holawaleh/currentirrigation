@@ -12,7 +12,7 @@ const sensorData = {
 
 // 2. Configure CORS
 const allowedOrigins = [
-  'https://your-frontend.vercel.app', // Replace with your actual frontend URL
+  'https://instantirrigation.vercel.app/', // Replace with your actual frontend URL
   'http://localhost:3000'
 ];
 
