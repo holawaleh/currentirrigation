@@ -21,22 +21,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchSensorData() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/status`, {
+    const response = await fetch('https://currentirrigation.onrender.com/api/status', {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'include', // If using cookies/auth
       headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include'
+        'Content-Type': 'application/json',
+      }
     });
     
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
     
-    const data = await response.json();
-    sensorData = data;
-    updateDashboard();
+    return await response.json();
   } catch (error) {
     console.error('Error fetching sensor data:', error);
-    showError('Error loading data. Retrying...');
-    setTimeout(fetchSensorData, 5000);
+    throw error;
   }
 }
 

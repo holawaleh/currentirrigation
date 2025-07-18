@@ -10,41 +10,106 @@ const sensorData = {
   pumpStatus: 'off'
 };
 
-// Configure CORS
+// Enhanced CORS configuration
 const allowedOrigins = [
-  'https://instantirrigation.vercel.app', // Removed trailing slash
+  'https://instantirrigation.vercel.app',
   'http://localhost:3000'
 ];
 
-// Enhanced CORS configuration
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
+// Custom CORS middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
 
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
-
-// Add body parser middleware
+// Body parser middleware
 app.use(express.json());
 
-// Your existing endpoints remain the same...
+// Your endpoints (unchanged from your original code)
+app.post('/api/climate', (req, res) => {
+  try {
+    const { temperature, humidity } = req.body;
+    
+    if (typeof temperature !== 'number' || typeof humidity !== 'number') {
+      return res.status(400).json({ error: 'Invalid data format' });
+    }
+
+    sensorData.climate = {
+      temperature,
+      humidity,
+      timestamp: new Date()
+    };
+
+    console.log('Updated climate data:', sensorData.climate);
+    res.status(200).json({ status: 'success' });
+  } catch (error) {
+    console.error('Climate endpoint error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/soil', (req, res) => {
+  try {
+    const { moisture } = req.body;
+    
+    if (typeof moisture !== 'number') {
+      return res.status(400).json({ error: 'Invalid moisture value' });
+    }
+
+    sensorData.soil = {
+      moisture,
+      timestamp: new Date()
+    };
+
+    res.status(200).json({ status: 'success' });
+  } catch (error) {
+    console.error('Soil endpoint error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/pump', (req, res) => {
+  try {
+    const { action } = req.body;
+    
+    if (!['on', 'off'].includes(action)) {
+      return res.status(400).json({ error: 'Invalid action' });
+    }
+
+    sensorData.pumpStatus = action;
+    res.status(200).json({ 
+      status: 'success',
+      pumpStatus: action
+    });
+  } catch (error) {
+    console.error('Pump endpoint error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/status', (req, res) => {
+  try {
+    res.status(200).json(sensorData);
+  } catch (error) {
+    console.error('Status endpoint error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({ error: 'CORS policy violation' });
-  }
   console.error('Server error:', err);
   res.status(500).json({ 
     error: 'Internal Server Error',
