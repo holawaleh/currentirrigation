@@ -1,8 +1,7 @@
 {
   "name": "smart-irrigation-system",
   "version": "1.0.0",
-  "description": "Smart Irrigation System with IOT integration",
-  "main": "server.js",
+    "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
