@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Irrigation System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header with live weather feed -->
+        <div class="header">
+            <div class="live-feed" id="liveFeed">
+                <span class="loading">Loading weather data...</span>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="main-content">
+            <h1 class="title">Smart Irrigation System</h1>
+            <p class="description">
+                The Smart Irrigation System uses IOT-Core microcontroller to optimize water usage, ensuring your plants get the right amount of water—no more, no less. Especially for agriculture purposes, the system adapts to real-time weather conditions, soil moisture levels, and environmental factors to deliver precision irrigation at its best.
+            </p>
+
+            <!-- Dashboard cards -->
+            <div class="dashboard">
+                <div class="card">
+                    <h3 class="card-title">Live Forecast</h3>
+                    <div class="card-content">
+                        <div class="metric">
+                            <span class="label">Temperature</span>
+                            <span class="value" id="forecast-temperature">--°C</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Pressure</span>
+                            <span class="value" id="forecast-pressure">-- hPa</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Soil Moisture</span>
+                            <span class="value" id="forecast-soil">-- m³/m³</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Humidity</span>
+                            <span class="value" id="forecast-humidity">--%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Location Reading</h3>
+                    <div class="card-content">
+                        <div class="metric">
+                            <span class="label">Temperature</span>
+                            <span class="value" id="location-temperature">--°C</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Pressure</span>
+                            <span class="value" id="location-pressure">-- hPa</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Soil Moisture</span>
+                            <span class="value" id="location-soil">-- m³/m³</span>
+                        </div>
+                        <div class="metric">
+                            <span class="label">Humidity</span>
+                            <span class="value" id="location-humidity">--%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Water pump control -->
+            <div class="pump-control">
+                <span class="pump-label">Open Irrigation Water</span>
+                <div class="switch">
+                    <input type="checkbox" id="pumpSwitch" class="switch-input">
+                    <label for="pumpSwitch" class="switch-label">
+                        <span class="switch-button"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
