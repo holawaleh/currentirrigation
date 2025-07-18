@@ -9,16 +9,10 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "node-fetch": "^3.3.2"
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   },
-  "keywords": [
-    "irrigation",
-    "iot",
-    "agriculture",
-    "smart-farming"
-  ],
+  "keywords": ["irrigation", "iot", "agriculture", "smart-farming"],
   "author": "Smart Irrigation Team",
   "license": "MIT"
 }
