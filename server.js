@@ -3,42 +3,39 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configure CORS for your frontend
+// Configure CORS - Remove trailing slash and update domain
 const allowedOrigins = [
-  'https://instantirrigation.vercel.app/', // Your Vercel frontend URL
-  'http://localhost:3000'               // For local testing
+  'https://smart-irrigation-frontend.vercel.app', // Your actual frontend URL
+  'http://localhost:3000'
 ];
 
 app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: allowedOrigins,
   methods: ['GET', 'POST'],
   credentials: true
 }));
 
 app.use(express.json());
 
-// Your existing endpoints
+// Add proper endpoint implementations
 app.post('/api/climate', (req, res) => {
-  // Your existing climate endpoint code
+  const { temperature, humidity } = req.body;
+  
+  if (typeof temperature !== 'number' || typeof humidity !== 'number') {
+    return res.status(400).json({ error: 'Invalid data format' });
+  }
+
+  // Store data
+  sensorData.climate = {
+    temperature,
+    humidity,
+    timestamp: new Date()
+  };
+
+  res.status(200).json({ status: 'success' });
 });
 
-app.post('/api/soil', (req, res) => {
-  // Your existing soil endpoint code
-});
-
-app.post('/api/pump', (req, res) => {
-  // Your existing pump endpoint code
-});
-
-app.get('/api/status', (req, res) => {
-  // Your existing status endpoint code
-});
+// Add similar implementations for other endpoints...
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
