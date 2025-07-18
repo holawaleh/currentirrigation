@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -13,15 +14,17 @@ const sensorData = {
 // Enhanced CORS configuration
 const allowedOrigins = [
   'https://instantirrigation.vercel.app',
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://currentirrigation.onrender.com'
 ];
 
 // Custom CORS middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (allowedOrigins.includes(origin) || !origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
@@ -37,10 +40,27 @@ app.use((req, res, next) => {
 // Body parser middleware
 app.use(express.json());
 
-// Your endpoints (unchanged from your original code)
+// Serve static files (if you have any)
+app.use(express.static('public'));
+
+// Add favicon route to prevent 404 errors
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date(),
+    uptime: process.uptime()
+  });
+});
+
+// Climate data endpoint
 app.post('/api/climate', (req, res) => {
   try {
-    const { temperature, humidity } = req.body;
+    const { temperature, humidity, pressure } = req.body;
     
     if (typeof temperature !== 'number' || typeof humidity !== 'number') {
       return res.status(400).json({ error: 'Invalid data format' });
@@ -49,17 +69,19 @@ app.post('/api/climate', (req, res) => {
     sensorData.climate = {
       temperature,
       humidity,
+      pressure: pressure || null,
       timestamp: new Date()
     };
 
     console.log('Updated climate data:', sensorData.climate);
-    res.status(200).json({ status: 'success' });
+    res.status(200).json({ status: 'success', data: sensorData.climate });
   } catch (error) {
     console.error('Climate endpoint error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
+// Soil data endpoint
 app.post('/api/soil', (req, res) => {
   try {
     const { moisture } = req.body;
@@ -73,25 +95,30 @@ app.post('/api/soil', (req, res) => {
       timestamp: new Date()
     };
 
-    res.status(200).json({ status: 'success' });
+    console.log('Updated soil data:', sensorData.soil);
+    res.status(200).json({ status: 'success', data: sensorData.soil });
   } catch (error) {
     console.error('Soil endpoint error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
+// Pump control endpoint
 app.post('/api/pump', (req, res) => {
   try {
     const { action } = req.body;
     
     if (!['on', 'off'].includes(action)) {
-      return res.status(400).json({ error: 'Invalid action' });
+      return res.status(400).json({ error: 'Invalid action. Use "on" or "off"' });
     }
 
     sensorData.pumpStatus = action;
+    console.log(`Pump ${action}`);
+    
     res.status(200).json({ 
       status: 'success',
-      pumpStatus: action
+      pumpStatus: action,
+      timestamp: new Date()
     });
   } catch (error) {
     console.error('Pump endpoint error:', error);
@@ -99,13 +126,32 @@ app.post('/api/pump', (req, res) => {
   }
 });
 
+// Status endpoint
 app.get('/api/status', (req, res) => {
   try {
-    res.status(200).json(sensorData);
+    res.status(200).json({
+      ...sensorData,
+      serverTime: new Date(),
+      uptime: process.uptime()
+    });
   } catch (error) {
     console.error('Status endpoint error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Catch-all route for undefined endpoints
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    error: 'Endpoint not found',
+    availableEndpoints: [
+      'GET /health',
+      'GET /api/status',
+      'POST /api/climate',
+      'POST /api/soil',
+      'POST /api/pump'
+    ]
+  });
 });
 
 // Error handling middleware
@@ -113,12 +159,13 @@ app.use((err, req, res, next) => {
   console.error('Server error:', err);
   res.status(500).json({ 
     error: 'Internal Server Error',
-    message: err.message 
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
 });
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 Allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
