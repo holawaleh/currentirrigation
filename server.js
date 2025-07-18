@@ -1,87 +1,46 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
-
-// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware setup
-app.use(cors());
-app.use(bodyParser.json());
+// Configure CORS for your frontend
+const allowedOrigins = [
+  'https://instantirrigation.vercel.app/', // Your Vercel frontend URL
+  'http://localhost:3000'               // For local testing
+];
 
-// In-memory storage
-let sensorData = {
-  climate: null,
-  soil: null,
-  pumpStatus: 'off'
-};
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 
-// Climate Data Endpoint
+app.use(express.json());
+
+// Your existing endpoints
 app.post('/api/climate', (req, res) => {
-  const { temperature, humidity } = req.body;
-  
-  if (typeof temperature !== 'number' || typeof humidity !== 'number') {
-    return res.status(400).json({ error: 'Invalid data format' });
-  }
-
-  sensorData.climate = {
-    temperature,
-    humidity,
-    timestamp: new Date()
-  };
-
-  console.log('Climate data received:', sensorData.climate);
-  res.status(200).json({ status: 'success' });
+  // Your existing climate endpoint code
 });
 
-// Soil Moisture Endpoint
 app.post('/api/soil', (req, res) => {
-  const { moisture } = req.body;
-  
-  if (typeof moisture !== 'number') {
-    return res.status(400).json({ error: 'Invalid moisture value' });
-  }
-
-  sensorData.soil = {
-    moisture,
-    timestamp: new Date()
-  };
-
-  console.log('Soil data received:', sensorData.soil);
-  res.status(200).json({ status: 'success' });
+  // Your existing soil endpoint code
 });
 
-// Pump Control Endpoint
 app.post('/api/pump', (req, res) => {
-  const { action } = req.body;
-  
-  if (!['on', 'off'].includes(action)) {
-    return res.status(400).json({ error: 'Invalid action' });
-  }
-
-  sensorData.pumpStatus = action;
-  console.log(`Pump turned ${action}`);
-
-  res.status(200).json({ 
-    status: 'success',
-    pumpStatus: action,
-    timestamp: new Date()
-  });
+  // Your existing pump endpoint code
 });
 
-// Status Endpoint
 app.get('/api/status', (req, res) => {
-  res.status(200).json(sensorData);
+  // Your existing status endpoint code
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
 });
