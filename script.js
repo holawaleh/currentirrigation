@@ -22,10 +22,38 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeApp();
 });
 
+// Add this function after the configuration section
+async function checkServerStatus() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`, {
+      method: 'GET',
+      mode: 'cors',
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('🏥 Server health check:', data);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('❌ Server health check failed:', error);
+    return false;
+  }
+}
+
 async function initializeApp() {
   try {
     // Add connection status indicator
     addConnectionStatusIndicator();
+    
+    // Check server status first
+    const serverOnline = await checkServerStatus();
+    if (!serverOnline) {
+      showError('Server is not responding. It may be starting up...');
+      updateConnectionStatus('disconnected');
+    }
     
     // Initial data fetch
     await fetchSensorData();
@@ -110,17 +138,22 @@ async function fetchSensorData() {
   try {
     updateConnectionStatus('connecting');
     
+    // First try to check if the server is reachable
     const response = await fetch(`${API_BASE_URL}/api/status`, {
       method: 'GET',
       mode: 'cors',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
       },
-      signal: AbortSignal.timeout(10000) // 10 second timeout
+      signal: AbortSignal.timeout(15000) // 15 second timeout
     });
     
     if (!response.ok) {
+      if (response.status === 502) {
+        throw new Error('Server is starting up, please wait...');
+      }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
@@ -138,9 +171,13 @@ async function fetchSensorData() {
     updateConnectionStatus('disconnected');
     
     if (error.name === 'AbortError') {
-      showError('Connection timeout');
+      showError('Connection timeout - server may be sleeping');
+    } else if (error.message.includes('CORS')) {
+      showError('CORS error - check server configuration');
+    } else if (error.message.includes('502')) {
+      showError('Server is starting up, please wait...');
     } else {
-      showError('Failed to fetch sensor data');
+      showError(`Connection failed: ${error.message}`);
     }
     
     throw error;
