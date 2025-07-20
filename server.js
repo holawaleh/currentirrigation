@@ -39,7 +39,6 @@ app.use(cors({
 
 // Additional CORS headers for preflight requests
 app.use((req, res, next) => {
-  // Log the request origin for debugging
   console.log('Request from origin:', req.headers.origin);
   
   if (req.method === 'OPTIONS') {
@@ -120,6 +119,57 @@ app.post('/api/soil', (req, res) => {
   }
 });
 
+// **NEW: Arduino combined sensor endpoint**
+app.post('/api/arduino/sensors', (req, res) => {
+  try {
+    const { temperature, humidity, moisture } = req.body;
+    
+    console.log('Received Arduino data:', req.body);
+    
+    // Validate data
+    if (typeof temperature !== 'number' || typeof humidity !== 'number' || typeof moisture !== 'number') {
+      return res.status(400).json({ error: 'Invalid data format' });
+    }
+
+    // Update climate data
+    sensorData.climate = {
+      temperature,
+      humidity,
+      pressure: null, // Arduino doesn't send pressure
+      timestamp: new Date()
+    };
+
+    // Update soil data  
+    sensorData.soil = {
+      moisture,
+      timestamp: new Date()
+    };
+
+    console.log('Updated sensor data from Arduino:', sensorData);
+    res.status(200).json({ 
+      status: 'success', 
+      message: 'Sensor data updated',
+      data: sensorData 
+    });
+  } catch (error) {
+    console.error('Arduino sensors endpoint error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// **NEW: Arduino pump command endpoint**
+app.get('/api/arduino/pump', (req, res) => {
+  try {
+    // Return current pump status for Arduino to read
+    const command = sensorData.pumpStatus === 'on' ? 'ON' : 'OFF';
+    console.log('Sending pump command to Arduino:', command);
+    res.status(200).send(command);
+  } catch (error) {
+    console.error('Arduino pump endpoint error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Pump control endpoint
 app.post('/api/pump', (req, res) => {
   try {
@@ -166,7 +216,9 @@ app.use('*', (req, res) => {
       'GET /api/status',
       'POST /api/climate',
       'POST /api/soil',
-      'POST /api/pump'
+      'POST /api/pump',
+      'POST /api/arduino/sensors',
+      'GET /api/arduino/pump'
     ]
   });
 });
