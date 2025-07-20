@@ -552,15 +552,15 @@
           </div>
           <div class="input-group">
             <label for="arduinoUrl">API Endpoint URL:</label>
-            <input type="text" id="arduinoUrl" placeholder="http://192.168.1.100/api/weather"
-              value="http://localhost:3001/api/weather">
+            <input type="text" id="arduinoUrl" placeholder="https://instantirrigation.vercel.app/api/sensors"
+              value="https://instantirrigation.vercel.app/api/sensors">
           </div>
           <button class="connect-btn" onclick="connectArduino()">Connect to Arduino</button>
         </div>
 
         <div class="location">
           <span>🔧</span>
-          <span>Local Arduino Sensor</span>
+          <span>Smart Irrigation System</span>
         </div>
         <div class="last-updated" id="arduinoLastUpdated">
           <span>🕒</span>
@@ -621,7 +621,7 @@
                 <div class="card-content">
                   <div class="card-label">Soil Moisture</div>
                   <div class="card-value" id="arduinoSoilMoisture">--</div>
-                  <div class="card-unit">%</div>
+                  <div class="card-unit">% (Irrigation)</div>
                 </div>
               </div>
               <div class="progress-bar">
@@ -630,24 +630,24 @@
             </div>
 
             <!-- Precipitation Card -->
-            <div class="card precipitation">
+            <div class="card precipitation" style="opacity: 0.6;">
               <div class="card-header">
-                <div class="icon-container">☔</div>
+                <div class="icon-container">🚰</div>
                 <div class="card-content">
-                  <div class="card-label">Precipitation</div>
-                  <div class="card-value" id="arduinoPrecipitation">--</div>
-                  <div class="card-unit">%</div>
+                  <div class="card-label">Pump Status</div>
+                  <div class="card-value" id="arduinoPumpStatus">OFF</div>
+                  <div class="card-unit">System</div>
                 </div>
               </div>
               <div class="progress-bar">
-                <div class="progress-fill" id="arduinoPrecipitationProgress"></div>
+                <div class="progress-fill" id="arduinoPumpProgress"></div>
               </div>
             </div>
           </div>
 
           <!-- Arduino Data Chart -->
           <div class="chart-container">
-            <div class="chart-title">Recent Sensor Readings</div>
+            <div class="chart-title">Moisture Levels (Last 24 Readings)</div>
             <div class="hour-bars" id="arduinoDataChart"></div>
             <div class="hour-labels" id="arduinoDataLabels"></div>
           </div>
@@ -845,19 +845,19 @@
     function updateArduinoDashboard() {
       if (!arduinoData) return;
 
-      // Expected Arduino data format:
+      // Arduino irrigation system data format:
       // {
-      //   temperature: 25.5,
-      //   humidity: 60,
-      //   soilMoisture: 45,
-      //   precipitation: 10,
+      //   temperature: 25.5,    // from DHT11
+      //   humidity: 60,         // from DHT11  
+      //   moisture: 45,         // soil moisture sensor
+      //   pumpActive: false,    // pump status
       //   timestamp: "2024-01-01T12:00:00Z"
       // }
 
       const temperature = arduinoData.temperature || 0;
       const humidity = arduinoData.humidity || 0;
-      const soilMoisture = arduinoData.soilMoisture || 0;
-      const precipitation = arduinoData.precipitation || 0;
+      const moisture = arduinoData.moisture || 0;
+      const pumpActive = arduinoData.pumpActive || false;
 
       // Update temperature
       document.getElementById('arduinoTemperature').textContent = temperature.toFixed(1);
@@ -868,12 +868,23 @@
       document.getElementById('arduinoHumidityProgress').style.width = `${humidity}%`;
 
       // Update soil moisture
-      document.getElementById('arduinoSoilMoisture').textContent = soilMoisture;
-      document.getElementById('arduinoSoilMoistureProgress').style.width = `${soilMoisture}%`;
+      document.getElementById('arduinoSoilMoisture').textContent = moisture;
+      document.getElementById('arduinoSoilMoistureProgress').style.width = `${moisture}%`;
 
-      // Update precipitation
-      document.getElementById('arduinoPrecipitation').textContent = precipitation;
-      document.getElementById('arduinoPrecipitationProgress').style.width = `${precipitation}%`;
+      // Update pump status
+      const pumpStatusElement = document.getElementById('arduinoPumpStatus');
+      const pumpProgressElement = document.getElementById('arduinoPumpProgress');
+
+      if (pumpActive) {
+        pumpStatusElement.textContent = 'ON';
+        pumpStatusElement.style.color = '#10b981';
+        pumpProgressElement.style.width = '100%';
+        pumpProgressElement.style.background = 'linear-gradient(90deg, #34d399, #10b981)';
+      } else {
+        pumpStatusElement.textContent = 'OFF';
+        pumpStatusElement.style.color = '#6b7280';
+        pumpProgressElement.style.width = '0%';
+      }
 
       // Update chart with recent readings (if available)
       updateArduinoChart();
@@ -887,23 +898,33 @@
       chartContainer.innerHTML = '';
       labelsContainer.innerHTML = '';
 
-      // If Arduino provides historical data, use it; otherwise create a simple current reading display
-      const readings = arduinoData.readings || [arduinoData.temperature || 0];
-      const maxReading = Math.max(...readings, 1);
+      // Use moisture readings for irrigation monitoring
+      const moistureReadings = arduinoData.moistureHistory || [arduinoData.moisture || 0];
+      const maxReading = Math.max(...moistureReadings, 100); // Max 100% moisture
 
       // Create bars for recent readings
-      readings.slice(-12).forEach((value, index) => {
+      moistureReadings.slice(-24).forEach((value, index) => {
         const bar = document.createElement('div');
         bar.className = 'hour-bar';
         bar.style.height = `${(value / maxReading) * 100}%`;
-        bar.title = `Reading ${index + 1}: ${value}`;
+        bar.title = `Moisture: ${value}%`;
+
+        // Color code based on moisture level
+        if (value < 30) {
+          bar.style.background = 'linear-gradient(to top, #ef4444, #fca5a5)'; // Red for dry
+        } else if (value < 60) {
+          bar.style.background = 'linear-gradient(to top, #f59e0b, #fbbf24)'; // Yellow for moderate
+        } else {
+          bar.style.background = 'linear-gradient(to top, #10b981, #6ee7b7)'; // Green for moist
+        }
+
         chartContainer.appendChild(bar);
       });
 
       // Create simple labels
-      for (let i = 0; i < Math.min(readings.length, 12); i++) {
+      for (let i = 0; i < Math.min(moistureReadings.length, 24); i++) {
         const label = document.createElement('span');
-        label.textContent = i % 3 === 0 ? `${i + 1}` : '';
+        label.textContent = i % 6 === 0 ? `${i + 1}` : '';
         labelsContainer.appendChild(label);
       }
     }
