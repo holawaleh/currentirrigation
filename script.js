@@ -243,45 +243,24 @@ async function fetchSensorData() {
   }
 }
 
-async function fetchWeatherData() {
-  try {
-    // Try to get user's location
-    const position = await new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation not supported'));
-        return;
-      }
-      
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        timeout: 5000,
-        enableHighAccuracy: false
-      });
-    });
-    
-    const { latitude, longitude } = position.coords;
-    
-    const weatherResponse = await fetch(
-      `${WEATHER_API_URL}?lat=${latitude}&lon=${longitude}&appid=${WEATHER_API_KEY}&units=metric`,
-      { signal: AbortSignal.timeout(5000) }
-    );
-    
-    if (!weatherResponse.ok) {
-      throw new Error('Weather API request failed');
+function updateWeatherDisplay(weatherData) {
+  const elements = {
+    'forecast-temp': `${Math.round(weatherData.main.temp)}°C`,
+    'forecast-humidity': `${weatherData.main.humidity}%`,
+    'forecast-pressure': `${weatherData.main.pressure} hPa`,
+    'forecast-location': weatherData.name,
+    'forecast-condition': weatherData.weather[0].description
+  };
+
+  Object.entries(elements).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = value;
+      element.classList.remove('loading');
     }
-    
-    const weatherData = await weatherResponse.json();
-    updateWeatherDisplay(weatherData);
-    console.log('🌤️ Weather data updated:', weatherData);
-    
-  } catch (error) {
-    console.error('❌ Weather fetch failed:', error);
-    // Use mock weather data if API fails
-    updateWeatherDisplay({
-      main: { temp: 25, humidity: 60, pressure: 1013 },
-      weather: [{ description: 'partly cloudy' }],
-      name: 'Local Area'
-    });
-  }
+  });
+
+  console.log('🌤️ Weather display updated');
 }
 
 function updateWeatherDisplay(weatherData) {

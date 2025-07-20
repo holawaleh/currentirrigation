@@ -76,6 +76,32 @@ app.use((req, res, next) => {
   next();
 });
 
+const axios = require('axios');
+
+// Replace with your actual OpenWeatherMap API key
+const WEATHER_API_KEY = 'YOUR_OPENWEATHERMAP_API_KEY';
+
+// Weather endpoint
+app.get('/api/weather', async (req, res) => {
+  try {
+    const { lat, lon } = req.query;
+
+    if (!lat || !lon) {
+      return res.status(400).json({ error: 'Latitude and longitude are required' });
+    }
+
+    const weatherResponse = await axios.get(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${WEATHER_API_KEY}&units=metric`
+    );
+
+    console.log('🌤️ Weather data fetched:', weatherResponse.data);
+    res.status(200).json(weatherResponse.data);
+  } catch (error) {
+    console.error('❌ Weather fetch error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch weather data' });
+  }
+});
+
 // Body parser middleware
 app.use(express.json());
 
