@@ -1,7 +1,5 @@
-// server.js
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,10 +29,10 @@ app.get('/api/weather', async (req, res) => {
   }
 });
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+app.get('/', (req, res) => {
+  res.send('🌱 SmartMat backend is live.');
 });
 
 app.listen(PORT, () => {
-  console.log(`🌦️ Weather API server running at http://localhost:${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
