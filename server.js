@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast?latitude=8.4966&longitude=4.5421&hourly=soil_moisture_3_to_9cm,precipitation_probability&current=temperature_2m,relative_humidity_2m';
+const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast?latitude=8.4966&longitude=4.5421&hourly=soil_moisture_3_to_9cm,precipitation_probability&current=temperature_2m,relative_humidity_2m'
 
 app.get('/api/weather', async (req, res) => {
   try {
