@@ -47,9 +47,11 @@
   </div>
 
   <script>
+    const API_BASE = 'https://smartmat-backend.onrender.com';
+
     async function fetchWeather() {
       try {
-        const res = await fetch('http://localhost:3000/api/weather');
+        const res = await fetch(`${API_BASE}/api/weather`);
         const data = await res.json();
 
         document.getElementById('temp').textContent = `${data.temperature ?? '--'}°C`;
