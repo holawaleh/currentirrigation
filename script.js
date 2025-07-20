@@ -2,10 +2,6 @@
 const API_BASE_URL = 'https://currentirrigation.onrender.com';
 const REFRESH_INTERVAL = 5000; // 5 seconds
 
-// OpenWeather API (get free API key from openweathermap.org)
-const WEATHER_API_KEY = 'YOUR_API_KEY_HERE'; // Replace with your actual API key
-const WEATHER_API_URL = 'https://api.openweathermap.org/data/2.5/weather';
-
 // Global state
 let sensorData = {
   climate: null,
@@ -30,10 +26,8 @@ async function initializeApp() {
   try {
     console.log('🚀 Initializing Smart Irrigation System...');
     
-    // Add connection status indicator
     addConnectionStatusIndicator();
     
-    // Check server status first
     const serverOnline = await checkServerStatus();
     if (!serverOnline) {
       showError('Server is not responding. It may be starting up...');
@@ -41,27 +35,13 @@ async function initializeApp() {
     } else {
       updateConnectionStatus('connected');
     }
-    
-    // Initial data fetch
+
     await fetchSensorData();
-    
-    // Fetch weather data (if API key is configured)
-    if (WEATHER_API_KEY !== 'YOUR_API_KEY_HERE') {
-      await fetchWeatherData();
-    } else {
-      console.log('⚠️ Weather API key not configured, using mock data');
-      updateWeatherDisplay({
-        main: { temp: 26, humidity: 70, pressure: 1015 },
-        weather: [{ description: 'partly cloudy' }]
-      });
-    }
-    
-    // Set up periodic refresh
+    await fetchWeatherData();
+
     startPeriodicRefresh();
-    
-    // Set up event listeners
     setupEventListeners();
-    
+
     console.log('✅ Application initialized successfully');
   } catch (error) {
     console.error('❌ Failed to initialize application:', error);
@@ -91,24 +71,14 @@ function addConnectionStatusIndicator() {
 }
 
 function setupEventListeners() {
-  if (pumpOnBtn) {
-    pumpOnBtn.addEventListener('click', () => controlPump('on'));
-  }
-  
-  if (pumpOffBtn) {
-    pumpOffBtn.addEventListener('click', () => controlPump('off'));
-  }
-  
-  // Handle page visibility changes
+  if (pumpOnBtn) pumpOnBtn.addEventListener('click', () => controlPump('on'));
+  if (pumpOffBtn) pumpOffBtn.addEventListener('click', () => controlPump('off'));
+
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stopPeriodicRefresh();
-    } else {
-      startPeriodicRefresh();
-    }
+    if (document.hidden) stopPeriodicRefresh();
+    else startPeriodicRefresh();
   });
 
-  // Add manual refresh button
   const refreshBtn = document.createElement('button');
   refreshBtn.textContent = '🔄 Refresh';
   refreshBtn.style.cssText = `
@@ -125,46 +95,23 @@ function setupEventListeners() {
   `;
   refreshBtn.addEventListener('click', () => {
     fetchSensorData();
+    fetchWeatherData();
     console.log('🔄 Manual refresh triggered');
   });
   document.body.appendChild(refreshBtn);
 }
 
 function startPeriodicRefresh() {
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
-  }
-  
+  if (refreshInterval) clearInterval(refreshInterval);
   refreshInterval = setInterval(() => {
-    fetchSensorData().catch(error => {
-      console.error('Periodic refresh failed:', error);
-    });
+    fetchSensorData().catch(console.error);
+    fetchWeatherData().catch(console.error);
   }, REFRESH_INTERVAL);
-  
-  // Weather refresh every 10 minutes (if API key configured)
-  if (weatherInterval) {
-    clearInterval(weatherInterval);
-  }
-  
-  if (WEATHER_API_KEY !== 'YOUR_API_KEY_HERE') {
-    weatherInterval = setInterval(() => {
-      fetchWeatherData().catch(error => {
-        console.error('Weather refresh failed:', error);
-      });
-    }, 600000); // 10 minutes
-  }
 }
 
 function stopPeriodicRefresh() {
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
-    refreshInterval = null;
-  }
-  
-  if (weatherInterval) {
-    clearInterval(weatherInterval);
-    weatherInterval = null;
-  }
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = null;
 }
 
 async function checkServerStatus() {
@@ -174,12 +121,7 @@ async function checkServerStatus() {
       mode: 'cors',
       signal: AbortSignal.timeout(5000)
     });
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('🏥 Server health check:', data);
-      return true;
-    }
+    if (response.ok) return true;
     return false;
   } catch (error) {
     console.error('❌ Server health check failed:', error);
@@ -190,7 +132,6 @@ async function checkServerStatus() {
 async function fetchSensorData() {
   try {
     updateConnectionStatus('connecting');
-    
     const response = await fetch(`${API_BASE_URL}/api/status`, {
       method: 'GET',
       mode: 'cors',
@@ -201,76 +142,58 @@ async function fetchSensorData() {
       },
       signal: AbortSignal.timeout(15000)
     });
-    
-    if (!response.ok) {
-      if (response.status === 502) {
-        throw new Error('Server is starting up, please wait...');
-      }
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     
     const data = await response.json();
     sensorData = data;
-    
     updateDashboard();
     updateConnectionStatus('connected');
     clearErrors();
-    
-    console.log('📊 Sensor data updated:', data);
     return data;
-    
   } catch (error) {
     console.error('❌ Error fetching sensor data:', error);
     updateConnectionStatus('disconnected');
+    showError(`Connection failed: ${error.message}`);
     
-    if (error.name === 'AbortError') {
-      showError('Connection timeout - server may be sleeping');
-    } else if (error.message.includes('CORS')) {
-      showError('CORS error - check server configuration');
-    } else if (error.message.includes('502')) {
-      showError('Server is starting up, please wait...');
-    } else {
-      showError(`Connection failed: ${error.message}`);
-    }
-    
-    // Use mock data if real data fails
     if (!sensorData.climate && !sensorData.soil) {
-      console.log('🔧 Using mock data due to connection failure');
       populateMockData();
     }
-    
     throw error;
   }
 }
 
-function updateWeatherDisplay(weatherData) {
-  const elements = {
-    'forecast-temp': `${Math.round(weatherData.main.temp)}°C`,
-    'forecast-humidity': `${weatherData.main.humidity}%`,
-    'forecast-pressure': `${weatherData.main.pressure} hPa`,
-    'forecast-location': weatherData.name,
-    'forecast-condition': weatherData.weather[0].description
-  };
+// ✅ NEW FUNCTION TO FETCH FROM OPEN-METEO
+async function fetchWeatherData() {
+  try {
+    const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=8.4966&longitude=4.5421&hourly=soil_moisture_3_to_9cm&current=temperature_2m,relative_humidity_2m');
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    
+    const weatherData = await response.json();
+    const temp = weatherData.current.temperature_2m;
+    const humidity = weatherData.current.relative_humidity_2m;
 
-  Object.entries(elements).forEach(([id, value]) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.textContent = value;
-      element.classList.remove('loading');
-    }
-  });
+    const timeIndex = weatherData.hourly.time.findIndex(t => t === weatherData.current.time);
+    const soilMoisture = weatherData.hourly.soil_moisture_3_to_9cm[timeIndex] || null;
 
-  console.log('🌤️ Weather display updated');
+    updateWeatherDisplay({
+      temperature: temp,
+      humidity: humidity,
+      soil_moisture: soilMoisture
+    });
+  } catch (error) {
+    console.error('❌ Failed to fetch weather data:', error);
+    showError(`Weather fetch error: ${error.message}`);
+  }
 }
 
-function updateWeatherDisplay(weatherData) {
+function updateWeatherDisplay(data) {
   const elements = {
-    'forecast-temp': `${Math.round(weatherData.main.temp)}°C`,
-    'forecast-humidity': `${weatherData.main.humidity}%`,
-    'forecast-pressure': `${weatherData.main.pressure} hPa`,
-    'forecast-moisture': 'N/A' // Weather API doesn't provide soil moisture
+    'forecast-temp': `${Math.round(data.temperature)}°C`,
+    'forecast-humidity': `${data.humidity}%`,
+    'forecast-moisture': data.soil_moisture ? `${(data.soil_moisture * 100).toFixed(1)}%` : 'N/A'
   };
-  
+
   Object.entries(elements).forEach(([id, value]) => {
     const element = document.getElementById(id);
     if (element) {
@@ -278,41 +201,28 @@ function updateWeatherDisplay(weatherData) {
       element.classList.remove('loading');
     }
   });
-
   console.log('🌤️ Weather display updated');
 }
 
 function updateDashboard() {
-  console.log('🔄 Updating dashboard with data:', sensorData);
-  
-  // Update climate data
   if (sensorData.climate) {
     updateElement('local-temp', `${sensorData.climate.temperature || '--'}°C`);
     updateElement('local-humidity', `${sensorData.climate.humidity || '--'}%`);
-    updateElement('local-pressure', 
-      sensorData.climate.pressure ? `${sensorData.climate.pressure} hPa` : 'N/A'
-    );
+    updateElement('local-pressure', sensorData.climate.pressure ? `${sensorData.climate.pressure} hPa` : 'N/A');
   } else {
-    // Show placeholder if no data
     updateElement('local-temp', '--°C');
     updateElement('local-humidity', '--%');
     updateElement('local-pressure', '-- hPa');
   }
-  
-  // Update soil data
+
   if (sensorData.soil) {
     updateElement('local-moisture', `${sensorData.soil.moisture || '--'}%`);
   } else {
     updateElement('local-moisture', '--%');
   }
-  
-  // Update pump status
+
   updatePumpStatus(sensorData.pumpStatus);
-  
-  // Remove loading classes
-  document.querySelectorAll('.loading').forEach(el => {
-    el.classList.remove('loading');
-  });
+  document.querySelectorAll('.loading').forEach(el => el.classList.remove('loading'));
 }
 
 function updateElement(id, value) {
@@ -321,45 +231,31 @@ function updateElement(id, value) {
     element.textContent = value;
     element.classList.remove('loading');
     console.log(`✅ Updated ${id}: ${value}`);
-  } else {
-    console.warn(`⚠️ Element with id '${id}' not found`);
   }
 }
 
 async function controlPump(action) {
   try {
     console.log(`🔧 Attempting to turn pump ${action}`);
-    
-    // Disable buttons during request
     togglePumpButtons(false);
-    
+
     const response = await fetch(`${API_BASE_URL}/api/pump`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ action }),
       signal: AbortSignal.timeout(10000)
     });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
     const result = await response.json();
     updatePumpStatus(result.pumpStatus);
-    
-    console.log(`✅ Pump ${action} successful`);
-    
-    // Refresh data to confirm change
     setTimeout(() => fetchSensorData(), 1000);
-    
   } catch (error) {
     console.error('❌ Error controlling pump:', error);
     showError(`Failed to turn pump ${action}: ${error.message}`);
   } finally {
-    // Re-enable buttons
     togglePumpButtons(true);
   }
 }
@@ -371,33 +267,30 @@ function togglePumpButtons(enabled) {
 
 function updatePumpStatus(status) {
   sensorData.pumpStatus = status;
-  
+
   if (pumpStatusElement) {
     pumpStatusElement.textContent = `Pump status: ${status || 'unknown'}`;
   }
-  
+
   const statusElement = document.getElementById('irrigation-status');
   if (statusElement) {
     statusElement.classList.remove('loading');
-    
     if (status === 'on') {
       statusElement.textContent = "IRRIGATING: Pump is running";
       statusElement.className = "status irrigating";
-      if (pumpStatusElement) pumpStatusElement.style.backgroundColor = '#d4edda';
+      pumpStatusElement.style.backgroundColor = '#d4edda';
     } else {
       statusElement.textContent = "NOT IRRIGATING: Pump is off";
       statusElement.className = "status not-irrigating";
-      if (pumpStatusElement) pumpStatusElement.style.backgroundColor = '#f8d7da';
+      pumpStatusElement.style.backgroundColor = '#f8d7da';
     }
   }
-
-  console.log(`🚰 Pump status updated: ${status}`);
 }
 
 function updateConnectionStatus(status) {
   const statusElement = document.getElementById('connection-status');
   if (!statusElement) return;
-  
+
   switch (status) {
     case 'connected':
       statusElement.textContent = '🟢 Connected';
@@ -415,8 +308,6 @@ function updateConnectionStatus(status) {
 }
 
 function showError(message) {
-  console.error('Error:', message);
-  
   let errorElement = document.getElementById('error-message');
   if (!errorElement) {
     errorElement = document.createElement('div');
@@ -437,54 +328,31 @@ function showError(message) {
     `;
     document.body.appendChild(errorElement);
   }
-  
   errorElement.textContent = message;
   errorElement.style.display = 'block';
-  
-  // Auto-hide after 10 seconds
-  setTimeout(() => {
-    if (errorElement) {
-      errorElement.style.display = 'none';
-    }
-  }, 10000);
+  setTimeout(() => errorElement.style.display = 'none', 10000);
 }
 
 function clearErrors() {
   const errorElement = document.getElementById('error-message');
-  if (errorElement) {
-    errorElement.style.display = 'none';
-  }
+  if (errorElement) errorElement.style.display = 'none';
 }
 
-// Debug function to manually populate data
 function populateMockData() {
-  console.log('🔧 Populating mock data for testing...');
-  
   sensorData = {
-    climate: {
-      temperature: 24,
-      humidity: 65,
-      pressure: null,
-      timestamp: new Date()
-    },
-    soil: {
-      moisture: 45,
-      timestamp: new Date()
-    },
+    climate: { temperature: 24, humidity: 65, pressure: null, timestamp: new Date() },
+    soil: { moisture: 45, timestamp: new Date() },
     pumpStatus: 'off'
   };
-  
   updateDashboard();
-  
-  // Also update weather forecast with mock data
   updateWeatherDisplay({
-    main: { temp: 26, humidity: 70, pressure: 1015 },
-    weather: [{ description: 'sunny' }],
-    name: 'Mock Location'
+    temperature: 26,
+    humidity: 70,
+    soil_moisture: 0.35
   });
 }
 
-// Expose functions for debugging
+// Debug tools
 window.irrigationApp = {
   fetchSensorData,
   controlPump,
@@ -495,7 +363,7 @@ window.irrigationApp = {
   testConnection: checkServerStatus
 };
 
-// Auto-populate mock data if no real data after 15 seconds
+// Auto-fallback to mock data if no real data
 setTimeout(() => {
   if (!sensorData.climate && !sensorData.soil) {
     console.log('🔧 No real sensor data received after 15s, using mock data');
