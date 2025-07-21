@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instant Irrigation Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="container">
+    <h1>🌱 Smart Irrigation Dashboard</h1>
+
+    <div class="data">
+      <p>🌡️ Temperature: <span id="temperature">--</span> °C</p>
+      <p>💧 Humidity: <span id="humidity">--</span> %</p>
+      <p>🌱 Moisture: <span id="moisture">--</span></p>
+      <p>🚰 Pump Status: <span id="pumpStatus">--</span></p>
+    </div>
+
+    <div class="controls">
+      <button onclick="setControl('on')">Pump ON</button>
+      <button onclick="setControl('off')">Pump OFF</button>
+      <button onclick="setControl('auto')">Auto Mode</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
