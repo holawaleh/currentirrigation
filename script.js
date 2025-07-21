@@ -132,7 +132,7 @@ async function checkServerStatus() {
 async function fetchSensorData() {
   try {
     updateConnectionStatus('connecting');
-    const response = await fetch(`${API_BASE_URL}/api/status`, {
+    const response = await fetch(`${API_BASE_URL}/api/sensor-data`, {
       method: 'GET',
       mode: 'cors',
       credentials: 'include',
