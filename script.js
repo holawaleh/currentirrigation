@@ -1,44 +1,31 @@
-const BASE_URL = "https://currentirrigation.onrender.com";
+const API_BASE = "https://currentirrigation.onrender.com/api";
 
 async function fetchSensorData() {
   try {
     const [dhtRes, moistureRes, pumpRes] = await Promise.all([
-      fetch(`${BASE_URL}/api/sensors/dht`),
-      fetch(`${BASE_URL}/api/sensors/moisture`),
-      fetch(`${BASE_URL}/api/pump/status`)
+      fetch(`${API_BASE}/sensors/dht`),
+      fetch(`${API_BASE}/sensors/moisture`),
+      fetch(`${API_BASE}/pump/status`)
     ]);
+
+    if (!dhtRes.ok || !moistureRes.ok || !pumpRes.ok) {
+      throw new Error("❌ One or more endpoints failed");
+    }
 
     const dht = await dhtRes.json();
     const moisture = await moistureRes.json();
     const pump = await pumpRes.json();
 
-    document.getElementById('temperature').textContent = dht.temperature ?? '--';
-    document.getElementById('humidity').textContent = dht.humidity ?? '--';
-    document.getElementById('moisture').textContent = moisture.moisture ?? '--';
-    document.getElementById('pumpStatus').textContent = pump.status ?? '--';
+    document.getElementById("temp").textContent = `🌡️ Temperature: ${dht.temperature} °C`;
+    document.getElementById("humidity").textContent = `💧 Humidity: ${dht.humidity} %`;
+    document.getElementById("moisture").textContent = `🌱 Moisture: ${moisture.moisture}`;
+    document.getElementById("pumpStatus").textContent = `🚰 Pump Status: ${pump.status}`;
 
   } catch (err) {
     console.error("Failed to fetch sensor data:", err);
   }
 }
 
-async function setControl(mode) {
-  try {
-    const res = await fetch(`${BASE_URL}/api/pump/control`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ control: mode })
-    });
-
-    if (res.ok) {
-      alert(`Pump mode set to ${mode}`);
-    } else {
-      alert('Failed to update pump control');
-    }
-  } catch (err) {
-    console.error("Control error:", err);
-  }
-}
-
-setInterval(fetchSensorData, 3000); // Refresh every 3 sec
+// Refresh data every 5 seconds
 fetchSensorData();
+setInterval(fetchSensorData, 5000);
